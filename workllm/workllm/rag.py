@@ -51,6 +51,21 @@ def rag_group():
     """RAG document management commands"""
 
 @rag_group.command()
+def list_collections():
+    """List all collections and their document counts"""
+    client = get_vector_client()
+    collections = client.list_collections()
+    
+    if not collections:
+        click.echo("No collections found")
+        return
+        
+    for collection_name in collections:
+        collection = client.get_collection(collection_name)
+        count = collection.count()
+        click.echo(f"{collection_name} - {count} documents")
+
+@rag_group.command()
 @click.argument("paths", nargs=-1, type=click.Path(exists=True))
 @click.option("--collection", default=DEFAULT_COLLECTION, help="Collection name")
 def ingest(paths, collection):
@@ -89,11 +104,11 @@ def ingest(paths, collection):
     click.echo(f"Ingested {len(ids)} documents into '{collection}' collection")
 
 @rag_group.command()
-@click.argument("query")
+@click.argument("retrieve")
 @click.option("--collection", default=DEFAULT_COLLECTION, help="Collection name")
 @click.option("--n-results", default=3, help="Number of results to return")
-def query(query, collection, n_results):
-    """Query vector store"""
+def retrieve(query, collection, n_results):
+    """Retrieve documents from vector store"""
     coll = get_collection(collection)
     results = coll.query(
         query_texts=[query],
@@ -103,9 +118,99 @@ def query(query, collection, n_results):
     for doc, meta in zip(results["documents"][0], results["metadatas"][0]):
         click.echo(f"\n=== From {meta['source']} ===\n{doc}\n")
 
-def rag_query(client: LLMClient, query: str, context: List[str]) -> str:
-    context_str = "\n\n".join(context)
-    return client.generate(
-        prompt=f"Query: {query}\n\nContext:\n{context_str}",
-        system="Answer the query using the provided context. Be concise and cite sources."
+@rag_group.command()
+@click.argument("query")
+@click.option("--collection", default=DEFAULT_COLLECTION, help="Collection name")
+def query(query: str, collection: str = DEFAULT_COLLECTION) -> str:
+    """Perform a RAG query using LangChain and LLM client.
+    
+    Args:
+        query: The query to answer
+        collection: Name of the collection to query
+        
+    Returns:
+        The generated response from the LLM incorporating the retrieved context
+    """
+    from .llm_clients import get_default_client
+    client = get_default_client()
+    
+    # Get vector store collection
+    coll = get_collection(collection)
+    
+    # Query the collection
+    results = coll.query(
+        query_texts=[query],
+        n_results=3
+    )
+    
+    # Format context from retrieved documents
+    context = "\n\n".join(results["documents"][0])
+    
+    # Create prompt with context
+    prompt = f"""
+    Answer the question based only on the context provided.
+    
+    Context: {context}
+    
+    Question: {query}
+    """
+    
+    # Get response from LLM
+    return client.generate(prompt)
+
+@rag_group.command()
+@click.option("--collection", default=DEFAULT_COLLECTION, help="Collection name")
+def chat(collection: str = DEFAULT_COLLECTION):
+    """Start an interactive chat session with RAG context"""
+    from .llm_clients import get_default_client
+    client = get_default_client()
+    coll = get_collection(collection)
+    
+    messages = []
+    system_prompt = """You are a helpful assistant that answers questions based on the provided context.
+    - Always respond based on the context when available
+    - Be concise and factual
+    - If you don't know the answer, say so
+    - Type '/exit' to end the chat"""
+    
+    click.echo(click.style("Starting RAG chat session. Type '/exit' to quit.\n", fg="green"))
+    click.echo(click.style(system_prompt + "\n", fg="blue"))
+    
+    while True:
+        query = click.prompt(click.style("You", fg="yellow", bold=True))
+        
+        if query.lower() == "/exit":
+            break
+            
+        # Get relevant context
+        results = coll.query(
+            query_texts=[query],
+            n_results=3
+        )
+        context = "\n\n".join(results["documents"][0])
+        
+        # Build prompt with chat history
+        prompt = f"""
+        System: {system_prompt}
+        
+        Context: {context}
+        
+        Chat History:
+        {format_chat_history(messages[-5:])}
+        
+        Question: {query}
+        """
+        
+        # Get response
+        click.echo(click.style("\nAssistant: ", fg="cyan", bold=True))
+        response = client.generate(prompt)
+        messages.append(("user", query))
+        messages.append(("assistant", response))
+        click.echo(click.style("\n"+"-" * 80, fg="magenta"))
+
+def format_chat_history(messages):
+    """Format chat history for prompt"""
+    return "\n".join(
+        f"{role.capitalize()}: {message}"
+        for role, message in messages
     )

@@ -5,10 +5,13 @@ WorkLLM is a command-line productivity toolkit powered by Large Language Models 
 ## Features
 
 ### Core Functionality
-- **Code Review**: Analyze and review code files with LLM-powered suggestions
+- **Code Review**: Analyze and review code files or GitHub PRs with LLM-powered suggestions
 - **Text Summarization**: Generate concise summaries from text, clipboard content, or web pages
 - **Debugging Assistant**: Analyze command output and provide debugging insights
-- **RAG Integration**: Document ingestion and querying with Retrieval Augmented Generation
+- **RAG Integration**: 
+  - Document ingestion and querying with Retrieval Augmented Generation
+  - Interactive chat interface with context-aware responses
+  - Automatic document processing (PDF, text, markdown)
 
 ### Supported LLM Providers
 - Ollama (default)
@@ -16,10 +19,14 @@ WorkLLM is a command-line productivity toolkit powered by Large Language Models 
 
 ## Installation
 
-1. Ensure Python 3.12+ is installed
+1. Install [uv](https://github.com/astral-sh/uv):
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
 2. Install WorkLLM:
 ```bash
-pip install workllm
+uv pip install workllm
 ```
 
 ## Usage
@@ -29,6 +36,7 @@ pip install workllm
 ```bash
 # Code review
 workllm code-review --file path/to/file.py
+workllm code-review --pr owner/repo#123  # Review GitHub PR
 
 # Text summarization
 workllm summarize --text "paste"  # Summarize clipboard content
@@ -40,6 +48,29 @@ workllm debug --shell-command "python script.py"
 # RAG Operations
 workllm rag ingest documents/*.pdf  # Ingest documents
 workllm rag query "search term"  # Query documents
+workllm rag chat --collection resumes  # Interactive chat with document context
+```
+
+### Advanced Examples
+
+#### GitHub PR Code Review
+```bash
+export GITHUB_TOKEN="your_github_token"
+workllm code-review --pr owner/repo#123
+```
+
+#### Interactive RAG Chat
+```bash
+# Ingest documents first
+workllm rag ingest documents/*.pdf
+
+# Start interactive chat
+workllm rag chat --collection resumes
+```
+
+#### Debugging with Execution
+```bash
+workllm debug --shell-command "python script.py --verbose"
 ```
 
 ### Configuration
@@ -52,6 +83,8 @@ export OPENAI_API_KEY="your-api-key"
 
 # For Ollama
 export OLLAMA_MODEL="llama3.2:3b"
+
+export GITHUB_TOKEN="your-github-token"
 ```
 
 ## Development

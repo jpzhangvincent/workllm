@@ -21,11 +21,11 @@ class LLMClient(Protocol):
 class OllamaClient:
     """Client for interacting with Ollama LLM models."""
     
-    def __init__(self, model: str = "llama3"):
+    def __init__(self, model: str = "llama3.2:3b"):
         """Initialize the Ollama client.
         
         Args:
-            model: The name of the Ollama model to use (default: 'llama3')
+            model: The name of the Ollama model to use (default: 'llama3.2:3b')
         """
         self.model = model
         
@@ -56,6 +56,14 @@ class OllamaClient:
             full_response += chunk["response"]
             
         return full_response
+
+def get_default_client() -> LLMClient:
+    """Get a default LLM client instance.
+    
+    Returns:
+        An LLMClient instance configured with default settings
+    """
+    return OllamaClient()
 
 class OpenAIClient:
     """Client for interacting with OpenAI's API."""

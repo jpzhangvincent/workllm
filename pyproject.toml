@@ -1,6 +1,6 @@
 [project]
 name = "workllm"
-version = "0.1.0"
+version = "0.2.0"
 description = "LLM-powered productivity toolkit for engineers"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -23,6 +23,9 @@ dependencies = [
     "pdf2image>=1.17.0",
     "unstructured-pytesseract>=0.3.13",
     "pygithub>=2.3.0",
+    "langchain>=0.1.0",
+    "langchain-core>=0.1.0",
+    "langchain-community>=0.1.0",
 ]
 
 [project.scripts]
