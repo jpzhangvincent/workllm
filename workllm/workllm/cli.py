@@ -1,10 +1,14 @@
-import click
 import os
+
+import click
 from github import Github
-from .llm_clients import OllamaClient, OpenAIClient
-from .productivity import review_code, summarize_text, analyze_debug_output
-from .utils import get_clipboard_content as _get_clipboard_content, safe_subprocess_run
+
+from .llm_clients import BedrockClient, OllamaClient, OpenAIClient
+from .productivity import analyze_debug_output, review_code, summarize_text, generate_code_docs, add_tests
 from .rag import rag_group
+from .utils import get_clipboard_content as _get_clipboard_content
+from .utils import safe_subprocess_run
+
 
 def _get_github_client():
     """Initialize GitHub client using GITHUB_TOKEN from environment"""
@@ -27,11 +31,12 @@ def _get_pr_content(repo_name: str, pr_number: int):
                 content += file.patch + "\n\n"
         return content
     except Exception as e:
-        raise click.ClickException(f"Failed to fetch PR content: {str(e)}")
+        raise click.ClickException(f"Failed to fetch PR content: {str(e)}") from e
 
 @click.group()
 def cli():
     """WorkLLM - Productivity toolkit powered by LLMs"""
+    pass
 
 @cli.command()
 @click.option("--file", type=click.Path(exists=True), help="File to review")
@@ -41,19 +46,19 @@ def cli():
 def code_review(file, pr, model, stream):
     """Perform code review on a file or GitHub PR"""
     client = _get_client(model)
-    
+
     if pr:
         try:
             repo_name, pr_number = pr.split("#")
             content = _get_pr_content(repo_name, int(pr_number))
         except ValueError:
-            raise click.ClickException("PR format must be owner/repo#number")
+            raise click.ClickException("PR format must be owner/repo#number") from None
     elif file:
         with open(file) as f:
             content = f.read()
     else:
         raise click.ClickException("Either --file or --pr must be specified")
-        
+
     result = review_code(client, content, stream=stream)
     click.echo(result)
 
@@ -66,17 +71,17 @@ def summarize(text, model):
     if text == "paste":
         text = _get_clipboard_content()
     elif text and text.startswith(('http://', 'https://')):
-        from unstructured.partition.html import partition_html
         import requests
+        from unstructured.partition.html import partition_html
         try:
             response = requests.get(text)
             response.raise_for_status()
             elements = partition_html(text=response.text)
             text = "\n".join([str(el) for el in elements])
         except requests.RequestException as e:
-            raise click.ClickException(f"Failed to fetch URL content: {str(e)}")
+            raise click.ClickException(f"Failed to fetch URL content: {str(e)}") from e
         except ImportError:
-            raise click.ClickException("unstructured library required for URL processing")
+            raise click.ClickException("unstructured library required for URL processing") from None
     result = summarize_text(client, text)
     click.echo(result)
 
@@ -100,7 +105,66 @@ def _get_client(model_str: str):
         return OllamaClient(model)
     elif provider == "openai":
         return OpenAIClient(model)
+    elif provider == "bedrock":
+        return BedrockClient(model)
     raise ValueError(f"Unknown provider {provider}")
+
+@cli.command()
+@click.option("--file", type=click.Path(exists=True), help="File to document")
+@click.option("--style", type=click.Choice(['google', 'sphinx']), default='google', help="Documentation style")
+@click.option("--focus", type=click.Choice(['class', 'function', None]), default=None, help="Focus on specific code elements")
+@click.option("--model", default="ollama:llama3.2:3b", help="LLM model to use")
+@click.option("--stream/--no-stream", default=True, help="Enable streaming output")
+@click.option("--overwrite/--no-overwrite", default=True, help="Overwrite the input file with documented code")
+def codedoc(file, style, focus, model, stream, overwrite):
+    """Generate documentation for Python code"""
+    client = _get_client(model)
+
+    if not file:
+        raise click.ClickException("--file must be specified")
+
+    with open(file) as f:
+        content = f.read()
+
+    result = generate_code_docs(
+        client, 
+        content,
+        style=style,
+        focus=focus,
+        stream=stream,
+        file_path=file if overwrite else None,
+        overwrite=overwrite
+    )
+    click.echo(result)
+
+@cli.command()
+@click.option("--file", type=click.Path(exists=True), required=True, help="Source file to generate tests for")
+@click.option("--unit/--no-unit", default=True, help="Generate unit tests")
+@click.option("--integration/--no-integration", default=True, help="Generate integration tests")
+@click.option("--auto-fix/--no-auto-fix", default=False, help="Automatically fix failing tests using LLM")
+@click.option("--max-iterations", default=3, type=int, help="Maximum auto-fix iterations")
+@click.option("--model", default="ollama:llama3.2:3b", help="LLM model to use")
+@click.option("--stream/--no-stream", default=True, help="Enable streaming output")
+def addtests(file, unit, integration, auto_fix, max_iterations, model, stream):
+    """Generate unit and integration tests for Python code"""
+    client = _get_client(model)
+
+    unit_tests, integration_tests = add_tests(
+        client,
+        file_path=file,
+        unit_tests=unit,
+        integration_tests=integration,
+        auto_fix=auto_fix,
+        max_iterations=max_iterations,
+        stream=stream
+    )
+    
+    if unit:
+        click.echo("\nGenerated unit tests:")
+        click.echo(unit_tests)
+    if integration:
+        click.echo("\nGenerated integration tests:")
+        click.echo(integration_tests)
 
 cli.add_command(rag_group, name="rag")
 

@@ -1,6 +1,6 @@
 [project]
 name = "workllm"
-version = "0.2.0"
+version = "0.2.5"
 description = "LLM-powered productivity toolkit for engineers"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -26,6 +26,11 @@ dependencies = [
     "langchain>=0.1.0",
     "langchain-core>=0.1.0",
     "langchain-community>=0.1.0",
+    "langchain-aws>=0.1.0",
+    "langchain-text-splitters>=0.3.5",
+    "langchain-huggingface>=0.1.2",
+    "langchain-chroma>=0.2.0",
+    "rank-bm25>=0.2.2",
 ]
 
 [project.scripts]
@@ -34,6 +39,22 @@ workllm = "workllm.cli:cli"
 [build-system]
 requires = ["setuptools>=65.5.1"]
 build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+line-length = 120
+lint.select = [
+    "E",  # pycodestyle errors
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C",  # flake8-comprehensions
+    "UP", # pyupgrade
+    "W",  # pycodestyle warnings
+]
+lint.ignore = [
+    "E203",  # whitespace before ':' (conflicts with black)
+    "E501",  # line too long (handled by line-length)
+]
 
 [tool.setuptools]
 packages = ["workllm"]
