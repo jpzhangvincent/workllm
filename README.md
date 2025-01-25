@@ -5,7 +5,9 @@ WorkLLM is a command-line productivity toolkit powered by Large Language Models 
 ## Features
 
 ### Core Functionality
+- **Code Documentation**: Generate comprehensive documentation in Google, Sphinx, or NumPy style
 - **Code Review**: Analyze and review code files or GitHub PRs with LLM-powered suggestions
+- **Test Generation**: Create unit and integration tests with auto-fix capabilities
 - **Text Summarization**: Generate concise summaries from text, clipboard content, or web pages
 - **Debugging Assistant**: Analyze command output and provide debugging insights
 - **RAG Integration**: 
@@ -13,9 +15,15 @@ WorkLLM is a command-line productivity toolkit powered by Large Language Models 
   - Interactive chat interface with context-aware responses
   - Automatic document processing (PDF, text, markdown)
 
+### System Architecture
+- **Modular Design**: Clean separation of concerns with specialized modules
+- **Centralized Prompts**: All LLM system prompts managed in `prompts.py` for easy maintenance
+- **Flexible LLM Integration**: Support for multiple LLM providers through abstracted client interfaces
+
 ### Supported LLM Providers
 - Ollama (default)
 - OpenAI
+- AWS Bedrock
 
 ## Installation
 
@@ -29,82 +37,85 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 uv pip install workllm
 ```
 
+## Configuration
+
+### Environment Variables
+- `OPENAI_API_KEY`: Required for OpenAI models
+- `GITHUB_TOKEN`: Required for GitHub integration
+- `LLM_CLIENT`: Default LLM client (options: "ollama", "openai", "bedrock")
+
 ## Usage
 
-### Basic Commands
+### Code Documentation
+```bash
+# Generate documentation
+workllm codedoc --file path/to/file.py --style google
+
+# Focus on specific elements
+workllm codedoc --file path/to/file.py --focus function
+```
+
+### Code Review
 
 ```bash
 # Code review
 workllm code-review --file path/to/file.py
-workllm code-review --pr owner/repo#123  # Review GitHub PR
-
-# Text summarization
-workllm summarize --text "paste"  # Summarize clipboard content
-workllm summarize --text "https://example.com"  # Summarize web page
-
-# Debugging
-workllm debug --shell-command "python script.py"
-
-# RAG Operations
-workllm rag ingest documents/*.pdf  # Ingest documents
-workllm rag query "search term"  # Query documents
-workllm rag chat --collection resumes  # Interactive chat with document context
+# or
+workllm code-review --pr owner/repo#number
 ```
 
-### Advanced Examples
-
-#### GitHub PR Code Review
-```bash
-export GITHUB_TOKEN="your_github_token"
-workllm code-review --pr owner/repo#123
-```
-
-#### Interactive RAG Chat
-```bash
-# Ingest documents first
-workllm rag ingest documents/*.pdf
-
-# Start interactive chat
-workllm rag chat --collection resumes
-```
-
-#### Debugging with Execution
-```bash
-workllm debug --shell-command "python script.py --verbose"
-```
-
-### Configuration
-
-Set up environment variables for LLM providers:
+### Test Generation
 
 ```bash
-# For OpenAI
-export OPENAI_API_KEY="your-api-key"
-
-# For Ollama
-export OLLAMA_MODEL="llama3.2:3b"
-
-export GITHUB_TOKEN="your-github-token"
+workllm addtests --file path/to/file.py [--unit/--no-unit] [--integration/--no-integration]
 ```
 
-## Development
-
-### Project Structure
-
-```
-workllm/
-├── cli.py          # Command-line interface
-├── llm_clients.py  # LLM client implementations
-├── productivity.py # Productivity utilities
-├── rag.py          # RAG functionality
-└── utils.py        # Common utilities
-```
-
-### Running Tests
+### Text Summarization
 
 ```bash
-pytest
+workllm summarize --text "text to summarize"
+# or from clipboard
+workllm summarize --text paste
+# or from URL
+workllm summarize --text https://example.com
 ```
+
+### Debug Analysis
+
+```bash
+workllm debug --shell-command "command to analyze"
+```
+
+### RAG Commands
+
+```bash
+# Ingest documents
+workllm rag ingest path/to/docs --collection_name documents_collection
+
+# List collections
+workllm rag list-collections
+
+# Question Answering from documents
+workllm rag query "your question" --collection_name documents_collection
+
+# Interactive chat
+workllm rag chat
+
+# Delete collection
+workllm rag delete-collection collection_name
+```
+
+
+### Generate Tests
+
+```bash
+# Generate both unit and integration tests
+workllm addtests --file src/module.py
+
+# Generate only unit tests with auto-fix
+workllm addtests --file src/module.py --no-integration --auto-fix
+```
+
 
 ## Contributing
 
