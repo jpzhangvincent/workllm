@@ -1,24 +1,24 @@
-from typing import Optional
+
 from .llm_clients import LLMClient
 from .prompts import (
+    CODE_REVIEW_SYSTEM_PROMPT,
+    DEBUG_ANALYSIS_SYSTEM_PROMPT,
     DOCUMENTATION_STYLE_EXAMPLES,
     DOCUMENTATION_SYSTEM_PROMPT,
-    CODE_REVIEW_SYSTEM_PROMPT,
-    TEXT_SUMMARIZATION_SYSTEM_PROMPT,
-    UNIT_TEST_SYSTEM_PROMPT,
     INTEGRATION_TEST_SYSTEM_PROMPT,
     TEST_FIX_SYSTEM_PROMPT,
-    DEBUG_ANALYSIS_SYSTEM_PROMPT
+    TEXT_SUMMARIZATION_SYSTEM_PROMPT,
+    UNIT_TEST_SYSTEM_PROMPT,
 )
 
 
 def generate_code_docs(
-    client: LLMClient, 
-    code: str, 
+    client: LLMClient,
+    code: str,
     style: str = "google",
-    focus: Optional[str] = None,
+    focus: str | None = None,
     stream: bool = True,
-    file_path: Optional[str] = None,
+    file_path: str | None = None,
     overwrite: bool = True
 ) -> str:
     """Generate documentation for code using an LLM client.
@@ -106,9 +106,9 @@ def _extract_function_signatures(directory: str) -> dict[str, list[str]]:
     """
     import ast
     from pathlib import Path
-    
+
     signatures = {}
-    
+
     def get_signature(node: ast.FunctionDef) -> str:
         args = []
         for arg in node.args.args:
@@ -116,22 +116,22 @@ def _extract_function_signatures(directory: str) -> dict[str, list[str]]:
             args.append(f"{arg.arg}: {annotation}")
         returns = ast.unparse(node.returns) if node.returns else 'None'
         return f"def {node.name}({', '.join(args)}) -> {returns}"
-    
+
     for file in Path(directory).rglob("*.py"):
         try:
-            with open(file, 'r') as f:
+            with open(file) as f:
                 tree = ast.parse(f.read())
-            
+
             file_sigs = []
             for node in ast.walk(tree):
                 if isinstance(node, ast.FunctionDef):
                     file_sigs.append(get_signature(node))
-            
+
             if file_sigs:
                 signatures[str(file.relative_to(directory))] = file_sigs
         except Exception as e:
             print(f"Warning: Failed to parse {file}: {str(e)}")
-    
+
     return signatures
 
 def add_tests(
@@ -161,7 +161,7 @@ def add_tests(
     from pathlib import Path
 
     # Read the source file and get context
-    with open(file_path, 'r') as f:
+    with open(file_path) as f:
         source_code = f.read()
 
     # Get directory structure and function signatures for context
@@ -170,7 +170,7 @@ def add_tests(
         tree_output = subprocess.check_output(['tree', source_dir]).decode()
     except:
         tree_output = "Failed to get directory structure"
-    
+
     try:
         signatures = _extract_function_signatures(source_dir)
         signatures_text = "\n".join(
@@ -233,12 +233,12 @@ def add_tests(
     # Save tests in appropriate directories
     source_file = Path(file_path)
     test_dir = source_file.parent.parent / 'tests'
-    
+
     # Create unit test directory
     unit_test_dir = test_dir / 'unit'
     unit_test_dir.mkdir(exist_ok=True, parents=True)
     unit_test_code = unit_test_code.replace(r".*```python", "").split("```")[0]
-    
+
     # Create integration test directory
     integration_test_dir = test_dir / 'integration'
     integration_test_dir.mkdir(exist_ok=True, parents=True)
@@ -260,12 +260,12 @@ def add_tests(
     try:
         iteration = 0
         while iteration < max_iterations:
-            result = subprocess.run(['pytest', '-v', str(test_dir)], 
+            result = subprocess.run(['pytest', '-v', str(test_dir)],
                                  capture_output=True, text=True)
-            
+
             if result.returncode == 0 or not auto_fix:
                 break
-                
+
             iteration += 1
 
             # If tests failed and auto_fix is enabled, use LLM to fix them
@@ -274,12 +274,12 @@ def add_tests(
             prompt = f"""Test failure output:
             {result.stdout}
             {result.stderr}
-            
+
             Current test code:
             Unit tests: {unit_test_code if unit_tests else 'N/A'}
-            
+
             Integration tests: {integration_test_code if integration_tests else 'N/A'}
-            
+
             Please fix the failing tests."""
 
             fixed_tests = client.generate(

@@ -1,10 +1,11 @@
 import os
+import subprocess
 
 import click
 from github import Github
 
 from .llm_clients import BedrockClient, OllamaClient, OpenAIClient
-from .productivity import analyze_debug_output, review_code, summarize_text, generate_code_docs, add_tests
+from .productivity import add_tests, analyze_debug_output, generate_code_docs, review_code, summarize_text
 from .rag import rag_group
 from .utils import get_clipboard_content as _get_clipboard_content
 from .utils import safe_subprocess_run
@@ -127,7 +128,7 @@ def codedoc(file, style, focus, model, stream, overwrite):
         content = f.read()
 
     result = generate_code_docs(
-        client, 
+        client,
         content,
         style=style,
         focus=focus,
@@ -158,13 +159,44 @@ def addtests(file, unit, integration, auto_fix, max_iterations, model, stream):
         max_iterations=max_iterations,
         stream=stream
     )
-    
+
     if unit:
         click.echo("\nGenerated unit tests:")
         click.echo(unit_tests)
     if integration:
         click.echo("\nGenerated integration tests:")
         click.echo(integration_tests)
+
+@cli.command()
+@click.argument("path", type=click.Path(exists=True))
+@click.option("--llm-fix", is_flag=True, help="Use LLM to fix remaining linting errors")
+@click.option("--model", default="ollama:llama3.2:3b", help="LLM model to use")
+def code_check(path, llm_fix, model):
+    """Run ruff linting and optionally fix remaining errors with LLM"""
+    client = _get_client(model)
+    
+    # Run ruff check with fixes
+    try:
+        result = subprocess.run(
+            ["ruff", "check", "--fix", "--unsafe-fixes", path],
+            capture_output=True,
+            text=True
+        )
+        
+        if result.returncode != 0:
+            click.echo("Ruff found issues:")
+            click.echo(result.stdout)
+            
+            if llm_fix:
+                from .utils import fix_code
+                fixed_code = fix_code(client, result.stdout)
+                click.echo("\nLLM suggested fixes:")
+                click.echo(fixed_code)
+        else:
+            click.echo("No linting issues found!")
+            
+    except subprocess.SubprocessError as e:
+        raise click.ClickException(f"Failed to run ruff: {str(e)}") from e
 
 cli.add_command(rag_group, name="rag")
 

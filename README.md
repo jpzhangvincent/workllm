@@ -13,7 +13,7 @@ WorkLLM is a command-line productivity toolkit powered by Large Language Models 
 - **RAG Integration**: 
   - Document ingestion and querying with Retrieval Augmented Generation
   - Interactive chat interface with context-aware responses
-  - Automatic document processing (PDF, text, markdown)
+  - Automatic document processing (PDF, text, markdown and codebase)
 
 ### System Architecture
 - **Modular Design**: Clean separation of concerns with specialized modules
@@ -22,7 +22,7 @@ WorkLLM is a command-line productivity toolkit powered by Large Language Models 
 
 ### Supported LLM Providers
 - Ollama (default)
-- OpenAI
+- OpenAI (or OpenAI API Compatible)
 - AWS Bedrock
 
 ## Installation

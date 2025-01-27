@@ -6,13 +6,13 @@ DOCUMENTATION_STYLE_EXAMPLES = {
         Args:
             param1: Description of param1
             param2: Description of param2
-        
+
         Returns:
             Description of return value
-        
+
         Raises:
             ValueError: Description of when this error occurs""",
-    
+
     'numpy': """Example NumPy style:
         Parameters
         ----------
@@ -20,12 +20,12 @@ DOCUMENTATION_STYLE_EXAMPLES = {
             Description of param1
         param2 : type
             Description of param2
-            
+
         Returns
         -------
         type
             Description of return value""",
-    
+
     'sphinx': """Example Sphinx style:
         :param param1: Description of param1
         :type param1: type

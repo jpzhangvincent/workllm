@@ -1,7 +1,9 @@
 import os
 from pathlib import Path
+
 import click
 from unstructured.partition.pdf import partition_pdf
+
 from .utils import ingest_doc, retrieve_doc
 
 DEFAULT_COLLECTION = "workllm"
@@ -151,14 +153,14 @@ def chat(collection: str = DEFAULT_COLLECTION):
 def list_collections():
     """List all collections in the vector store"""
     from chromadb import PersistentClient
-    
+
     client = PersistentClient(path=PERSIST_DIR)
     collections = client.list_collections()
-    
+
     if not collections:
         click.echo("No collections found")
         return
-    
+
     click.echo(f"Collections in {PERSIST_DIR}:")
     for collection in collections:
         click.echo(f"\n=== {collection.name} ===")
@@ -170,7 +172,7 @@ def list_collections():
 def delete_collection(collection_name: str):
     """Delete a collection from the vector store"""
     from .utils import delete_collection
-    
+
     if click.confirm(f"Are you sure you want to delete collection '{collection_name}'?"):
         delete_collection(collection_name, PERSIST_DIR)
         click.echo(f"Deleted collection '{collection_name}'")

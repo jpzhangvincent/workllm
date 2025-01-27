@@ -88,7 +88,7 @@ class BedrockClient:
             The generated text response from the model
         """
         from langchain_core.messages import HumanMessage, SystemMessage
-        
+
         messages = [HumanMessage(content=prompt)]
         if system:
             messages.insert(0, SystemMessage(content=system))
