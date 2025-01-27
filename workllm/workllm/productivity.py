@@ -168,7 +168,7 @@ def add_tests(
     source_dir = os.path.dirname(file_path)
     try:
         tree_output = subprocess.check_output(['tree', source_dir]).decode()
-    except:
+    except Exception:
         tree_output = "Failed to get directory structure"
 
     try:
@@ -177,7 +177,7 @@ def add_tests(
             f"File: {file}\nFunctions:\n" + "\n".join(f"  {sig}" for sig in sigs)
             for file, sigs in signatures.items()
         )
-    except:
+    except Exception:
         signatures_text = "Failed to extract function signatures"
 
     # Generate unit tests

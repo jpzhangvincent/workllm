@@ -3,9 +3,11 @@ from typing import Protocol
 
 import ollama
 from botocore.exceptions import NoCredentialsError
+from dotenv import find_dotenv, load_dotenv
 from langchain_aws import ChatBedrock
 from openai import OpenAI
 
+load_dotenv(find_dotenv())
 
 class LLMClient(Protocol):
     """Protocol defining the interface for LLM clients."""
@@ -117,29 +119,36 @@ def get_default_client() -> LLMClient:
 
     if client_type == "openai":
         return OpenAIClient()
+    elif client_type == "deepseek":
+        return DeepSeekClient()
+    elif client_type == "openrouter":
+        return OpenRouterClient()
     elif client_type == "bedrock":
         return BedrockClient()
     return OllamaClient()
 
 
-class OpenAIClient:
-    """Client for interacting with OpenAI's API."""
+class BaseOpenAIClient:
+    """Base client for OpenAI-compatible APIs."""
 
-    def __init__(self, model: str = "gpt-4o-2024-11-20"):
-        """Initialize the OpenAI client.
+    def __init__(self, model: str, api_key_env: str, base_url: str | None = None):
+        """Initialize the base client.
         Args:
-            model: The name of the OpenAI model to use (default: 'gpt-4o-2024-11-20')
+            model: The model name to use
+            api_key_env: Environment variable name for the API key
+            base_url: Optional base URL for the API
         Raises:
-            ValueError: If OPENAI_API_KEY environment variable is not set
+            ValueError: If the required API key environment variable is not set
         """
-        api_key = os.getenv("OPENAI_API_KEY")
+        api_key = os.getenv(api_key_env)
         if not api_key:
-            raise ValueError("OPENAI_API_KEY environment variable is required")
-        self.client = OpenAI(api_key=api_key)
+            raise ValueError(f"{api_key_env} environment variable is required")
+
+        self.client = OpenAI(api_key=api_key, base_url=base_url)
         self.model = model
 
     def generate(self, prompt: str, system: str | None = None, stream: bool = True) -> str:
-        """Generate text using the OpenAI model.
+        """Generate text using the model.
         Args:
             prompt: The input text prompt for the model
             system: Optional system message to guide the model's behavior
@@ -167,3 +176,36 @@ class OpenAIClient:
                 full_response += content
 
         return full_response
+
+
+class OpenAIClient(BaseOpenAIClient):
+    """Client for interacting with OpenAI's API."""
+
+    def __init__(self, model: str = "gpt-4o-2024-11-20"):
+        """Initialize the OpenAI client.
+        Args:
+            model: The name of the OpenAI model to use (default: 'gpt-4o-2024-11-20')
+        """
+        super().__init__(model, "OPENAI_API_KEY")
+
+
+class DeepSeekClient(BaseOpenAIClient):
+    """Client for interacting with DeepSeek's API."""
+
+    def __init__(self, model: str = "deepseek-chat"):
+        """Initialize the DeepSeek client.
+        Args:
+            model: The name of the DeepSeek model to use (default: 'deepseek-chat')
+        """
+        super().__init__(model, "DEEPSEEK_API_KEY", "https://api.deepseek.com/v1")
+
+
+class OpenRouterClient(BaseOpenAIClient):
+    """Client for interacting with OpenRouter's API."""
+
+    def __init__(self, model: str = "openai/gpt-4"):
+        """Initialize the OpenRouter client.
+        Args:
+            model: The name of the OpenRouter model to use (default: 'openai/gpt-4')
+        """
+        super().__init__(model, "OPENROUTER_API_KEY", "https://openrouter.ai/api/v1")

@@ -22,7 +22,9 @@ WorkLLM is a command-line productivity toolkit powered by Large Language Models 
 
 ### Supported LLM Providers
 - Ollama (default)
-- OpenAI (or OpenAI API Compatible)
+- OpenAI
+- Deepseek
+- OpenRouter 
 - AWS Bedrock
 
 ## Installation
@@ -42,7 +44,12 @@ uv pip install workllm
 ### Environment Variables
 - `OPENAI_API_KEY`: Required for OpenAI models
 - `GITHUB_TOKEN`: Required for GitHub integration
-- `LLM_CLIENT`: Default LLM client (options: "ollama", "openai", "bedrock")
+- `LLM_CLIENT` and `LLM_CLIENT_MODEL`: Default LLM client (options: "ollama", "openai", "bedrock", "deepseek", "openrouter") and model choice
+
+```bash
+export LLM_CLIENT="ollama"
+export LLM_CLIENT_MODEL="deepseek-r1:14b"
+```
 
 ## Usage
 
@@ -62,6 +69,16 @@ workllm codedoc --file path/to/file.py --focus function
 workllm code-review --file path/to/file.py
 # or
 workllm code-review --pr owner/repo#number
+```
+
+### Code Style Checker
+
+```
+# Code linting and formatting checker with `ruff`
+workllm code-check path/to/file.py
+
+# Code linting and formatting checker, and then use LLM to suggest fixes for any remaining issues
+workllm code-check --llm-fix path/to/file.py
 ```
 
 ### Test Generation

@@ -1,6 +1,6 @@
 [project]
 name = "workllm"
-version = "0.2.5"
+version = "0.3"
 description = "LLM-powered productivity toolkit for engineers"
 readme = "README.md"
 requires-python = ">=3.12"
