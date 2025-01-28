@@ -6,6 +6,7 @@ from .prompts import (
     DOCUMENTATION_STYLE_EXAMPLES,
     DOCUMENTATION_SYSTEM_PROMPT,
     INTEGRATION_TEST_SYSTEM_PROMPT,
+    PR_SUMMARY_PROMPT,
     TEST_FIX_SYSTEM_PROMPT,
     TEXT_SUMMARIZATION_SYSTEM_PROMPT,
     UNIT_TEST_SYSTEM_PROMPT,
@@ -327,5 +328,23 @@ def analyze_debug_output(client: LLMClient, command: str, output: str, stream: b
     return client.generate(
         prompt=prompt,
         system=system_prompt,
+        stream=stream
+    )
+
+def generate_pr_description(client: LLMClient, diff: str, stream: bool = True) -> str:
+    """Generate a comprehensive PR description using an LLM client.
+
+    Args:
+        client: The LLM client to use for generating the PR description
+        diff: The code difference to analyze
+        stream: Whether to stream the response or return it all at once
+
+    Returns:
+        The generated PR description
+    """
+    prompt = PR_SUMMARY_PROMPT.format(diff=diff)
+    return client.generate(
+        prompt=prompt,
+        system="",
         stream=stream
     )

@@ -10,15 +10,10 @@ WorkLLM is a command-line productivity toolkit powered by Large Language Models 
 - **Test Generation**: Create unit and integration tests with auto-fix capabilities
 - **Text Summarization**: Generate concise summaries from text, clipboard content, or web pages
 - **Debugging Assistant**: Analyze command output and provide debugging insights
-- **RAG Integration**: 
+- **Chat with docs and codebase**: 
   - Document ingestion and querying with Retrieval Augmented Generation
   - Interactive chat interface with context-aware responses
   - Automatic document processing (PDF, text, markdown and codebase)
-
-### System Architecture
-- **Modular Design**: Clean separation of concerns with specialized modules
-- **Centralized Prompts**: All LLM system prompts managed in `prompts.py` for easy maintenance
-- **Flexible LLM Integration**: Support for multiple LLM providers through abstracted client interfaces
 
 ### Supported LLM Providers
 - Ollama (default)

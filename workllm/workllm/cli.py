@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from github import Github
 
 from .llm_clients import BedrockClient, DeepSeekClient, OllamaClient, OpenAIClient, OpenRouterClient
-from .productivity import add_tests, analyze_debug_output, generate_code_docs, review_code, summarize_text
+from .productivity import add_tests, analyze_debug_output, generate_code_docs, review_code, summarize_text, generate_pr_description
 from .rag import rag_group
 from .utils import get_clipboard_content as _get_clipboard_content
 from .utils import safe_subprocess_run
@@ -17,7 +17,6 @@ if os.getenv("LLM_CLIENT") and os.getenv("LLM_CLIENT_MODEL"):
 else:
     DEFAULT_MODEL = "ollama:llama3.2:3b"
 click.echo(click.style(f"Selected LLM model: {DEFAULT_MODEL}", fg="green"))
-
 
 def _get_github_client():
     """Initialize GitHub client using GITHUB_TOKEN from environment"""
@@ -209,6 +208,38 @@ def code_check(path, llm_fix, model):
 
     except subprocess.SubprocessError as e:
         raise click.ClickException(f"Failed to run ruff: {str(e)}") from e
+
+@cli.command()
+@click.option("--target-branch", default="master", help="Target branch to compare against")
+@click.option("--output", type=click.Path(), help="Output markdown file path")
+@click.option("--model", default="ollama:llama3.2:3b", help="LLM model to use")
+def pr_description(target_branch, output, model):
+    """Generate concise PR description based on changes against target branch"""
+    from pathlib import Path
+    import subprocess
+
+    try:
+        # Get the current branch name
+        current_branch = subprocess.check_output(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"], text=True
+        ).strip()
+
+        # Get the diff between the current branch and the target branch
+        diff = subprocess.check_output(
+            ["git", "diff", target_branch], text=True
+        )
+
+        client = _get_client(model)
+        description = generate_pr_description(client, diff)
+
+        if output:
+            Path(output).write_text(description)
+            click.echo(f"PR description saved to {output}")
+        else:
+            click.echo(description)
+
+    except subprocess.CalledProcessError as e:
+        raise click.ClickException(f"Git error: {str(e)}")
 
 cli.add_command(rag_group, name="rag")
 
