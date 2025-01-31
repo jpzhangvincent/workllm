@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from github import Github
 
 from .llm_clients import BedrockClient, DeepSeekClient, OllamaClient, OpenAIClient, OpenRouterClient
-from .productivity import add_tests, analyze_debug_output, generate_code_docs, review_code, summarize_text, generate_pr_description
+from .productivity import add_tests, analyze_debug_output, generate_code_docs, review_code, summarize_text, generate_pr_description, generate_mermaid_diagram
 from .rag import rag_group
 from .utils import get_clipboard_content as _get_clipboard_content
 from .utils import safe_subprocess_run
@@ -240,6 +240,39 @@ def pr_description(target_branch, output, model):
 
     except subprocess.CalledProcessError as e:
         raise click.ClickException(f"Git error: {str(e)}")
+
+@cli.command()
+@click.option("--source", type=click.Path(exists=True, file_okay=False), required=True, help="Directory to generate Mermaid diagram for")
+@click.option("--readme", type=click.Path(exists=True, dir_okay=False), help="Path to README.md for additional context")
+@click.option("--use-llm", is_flag=True, help="Use LLM reasoning to extract key functions")
+@click.option("--model", default="ollama:llama3.2:3b", help="LLM model to use")
+def generate_diagram(source, readme, use_llm, model):
+    """Generate a Mermaid diagram based on the dependencies in a codebase
+    
+    Args:
+        source: File or Directory containing the codebase
+        readme: Path to README.md for additional context
+        use_llm: Whether to use LLM for enhanced analysis
+        model: LLM model to use
+    """
+    client = _get_client(model) if use_llm else None
+    
+    # Read README content if provided
+    readme_content = None
+    if readme:
+        try:
+            with open(readme) as f:
+                readme_content = f.read()
+        except Exception as e:
+            raise click.ClickException(f"Failed to read README file: {str(e)}")
+    
+    diagram = generate_mermaid_diagram(
+        source, 
+        use_llm=use_llm, 
+        client=client,
+        readme_content=readme_content
+    )
+    click.echo(diagram)
 
 cli.add_command(rag_group, name="rag")
 

@@ -1,3 +1,7 @@
+import os
+import ast
+import json
+from pathlib import Path
 
 from .llm_clients import LLMClient
 from .prompts import (
@@ -12,6 +16,162 @@ from .prompts import (
     UNIT_TEST_SYSTEM_PROMPT,
 )
 
+def extract_function_dependencies(file_path):
+    with open(file_path, 'r') as file:
+        tree = ast.parse(file.read(), filename=str(file_path))
+
+    dependencies = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+            dependencies.append(node.func.id)
+
+    return dependencies
+
+class CodeRelationshipExtractor(ast.NodeVisitor):
+    def __init__(self):
+        self.relationships = {
+            'imports': [],
+            'classes': {},
+            'functions': {},
+            'calls': []
+        }
+        self.current_class = None
+
+    def visit_Import(self, node):
+        for alias in node.names:
+            self.relationships['imports'].append(alias.name)
+        self.generic_visit(node)
+
+    def visit_ImportFrom(self, node):
+        self.relationships['imports'].append(f"{node.module}.{node.names[0].name}")
+        self.generic_visit(node)
+
+    def visit_ClassDef(self, node):
+        self.current_class = node.name
+        self.relationships['classes'][node.name] = {
+            'methods': [],
+            'inherits': [base.id for base in node.bases if isinstance(base, ast.Name)]
+        }
+        self.generic_visit(node)
+        self.current_class = None
+
+    def visit_FunctionDef(self, node):
+        func_info = {
+            'calls': [],
+            'params': [arg.arg for arg in node.args.args]
+        }
+        
+        if self.current_class:
+            self.relationships['classes'][self.current_class]['methods'].append(node.name)
+        else:
+            self.relationships['functions'][node.name] = func_info
+        self.generic_visit(node)
+
+    def visit_Call(self, node):
+        if isinstance(node.func, ast.Name):
+            self.relationships['calls'].append(node.func.id)
+        self.generic_visit(node)
+
+def extract_code_relationships(file_path):
+    """Extract comprehensive code relationships including imports, classes, and functions."""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            content = file.read()
+            # Skip binary files and non-Python files
+            if '\x00' in content or not content.strip():
+                return {
+                    'imports': [],
+                    'classes': {},
+                    'functions': {},
+                    'calls': []
+                }
+            tree = ast.parse(content, filename=str(file_path))
+            extractor = CodeRelationshipExtractor()
+            extractor.visit(tree)
+            return extractor.relationships
+    except (SyntaxError, UnicodeDecodeError, ValueError):
+        # Return empty relationships for files that can't be parsed
+        return {
+            'imports': [],
+            'classes': {},
+            'functions': {},
+            'calls': []
+        }
+
+def generate_mermaid_diagram(source, use_llm=False, client=None, readme_content=None):
+    """
+    Generate a comprehensive Mermaid diagram of the codebase structure and relationships.
+
+    Args:
+        source (str): Path to the directory containing the Python codebase
+        use_llm (bool): Whether to use LLM for enhanced analysis
+        client (LLMClient): The LLM client to use for reasoning
+        readme_content (str): Content from README.md for additional context
+
+    Returns:
+        str: Mermaid diagram as a string
+    """
+    relationships = {}
+    
+    # Extract relationships from all Python files
+    for file in Path(source).rglob("*.py"):
+        file_relationships = extract_code_relationships(file)
+        relationships[str(file.relative_to(source))] = file_relationships
+
+    # Enhanced analysis with LLM if enabled
+    if use_llm and client:
+        prompt = (
+            "Analyze the following code relationships and generate a structured dependency graph. "
+            "Consider the following project context from README.md:\n"
+            f"{readme_content}\n\n"
+            "Code relationships:\n"
+            f"{relationships}\n\n"
+            "Generate a comprehensive Mermaid diagram with key details focusing on:\n"
+            "1. Key architectural components\n"
+            "2. Core functional relationships\n"
+            "3. Important data flows\n"
+            "4. Focus on custom modules instead of third-party common libraries.\n"
+            "5. Make sure the dependency order rendered properly.\n"
+            "Only output the Mermaid code for an architecture diagram with entity relationships directly:"
+        )        
+        diagram = client.generate(
+            prompt=prompt,
+            system="You are a software architect analyzing code relationships.",
+            stream=False
+        )
+    else:
+        # Generate Mermaid diagram programmatically
+        diagram = ["graph TD"]
+        
+        # Add modules and files
+        for file, rels in relationships.items():
+            module_name = file.replace('.py', '')
+            diagram.append(f"    subgraph {module_name}")
+            
+            # Add classes
+            for class_name, class_info in rels['classes'].items():
+                diagram.append(f"        class {class_name}")
+                if class_info['inherits']:
+                    for parent in class_info['inherits']:
+                        diagram.append(f"        {parent} <|-- {class_name}")
+                for method in class_info['methods']:
+                    diagram.append(f"        {class_name} : {method}()")
+            
+            # Add functions
+            for func_name, func_info in rels['functions'].items():
+                diagram.append(f"        function {func_name}({', '.join(func_info['params'])})")
+                for call in func_info['calls']:
+                    diagram.append(f"        {func_name} --> {call}")
+            
+            diagram.append("    end")
+            
+            # Add file-level dependencies
+            for imp in rels['imports']:
+                diagram.append(f"    {module_name} --> {imp}")
+            for call in rels['calls']:
+                diagram.append(f"    {module_name} --> {call}")
+            diagram = "\n".join(diagram)
+    return diagram
 
 def generate_code_docs(
     client: LLMClient,
@@ -58,7 +218,6 @@ def generate_code_docs(
             print(f"Warning: Failed to overwrite file {file_path}: {str(e)}")
 
     return documented_code
-
 
 def review_code(client: LLMClient, code: str, stream: bool = True) -> str:
     """Perform code review using an LLM client.
@@ -301,7 +460,6 @@ def add_tests(
         print(f"Warning: Failed to run tests: {str(e)}")
 
     return unit_test_code, integration_test_code
-
 
 def analyze_debug_output(client: LLMClient, command: str, output: str, stream: bool = True) -> str:
     """Analyze command output for debugging purposes using an LLM client.

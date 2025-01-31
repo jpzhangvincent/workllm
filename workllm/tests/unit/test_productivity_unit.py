@@ -1,9 +1,11 @@
+import os
+import tempfile
 import pytest
 from unittest.mock import patch, MagicMock
 from pathlib import Path
 
 from workllm.llm_clients import LLMClient, get_default_client
-from workllm.productivity import generate_code_docs, review_code, summarize_text
+from workllm.productivity import generate_code_docs, review_code, summarize_text, generate_mermaid_diagram
 
 @pytest.fixture
 def mock_client():
@@ -53,3 +55,24 @@ def test_summarize_text(mock_client):
     # Assert
     assert result == "Sample text summary"
     mock_client.generate.assert_called_once()
+
+def test_generate_mermaid_diagram():
+    with tempfile.TemporaryDirectory() as tempdir:
+        # Create sample Python files
+        file1 = os.path.join(tempdir, "file1.py")
+        file2 = os.path.join(tempdir, "file2.py")
+        with open(file1, 'w') as f:
+            f.write("import os\nimport sys\ndef func1():\n    pass\n")
+        with open(file2, 'w') as f:
+            f.write("from file1 import func1\ndef func2():\n    func1()\n")
+
+        # Generate Mermaid diagram
+        diagram = generate_mermaid_diagram(tempdir)
+        expected_diagram = (
+            "graph TD\n"
+            "    file2 --> file1\n"
+            "    file2 --> func1\n"
+            "    file1 --> os\n"
+            "    file1 --> sys\n"
+        )
+        assert diagram.strip() == expected_diagram.strip()
