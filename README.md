@@ -8,20 +8,23 @@ WorkLLM is a command-line productivity toolkit powered by Large Language Models 
 - **Code Documentation**: Generate comprehensive documentation in Google, Sphinx, or NumPy style
 - **Code Review**: Analyze and review code files or GitHub PRs with LLM-powered suggestions
 - **Test Generation**: Create unit and integration tests with auto-fix capabilities
+- **Code Quality**: Run code linting with ruff and auto-fix issues using LLM suggestions
+- **PR Summary**: Generate pull request descriptions from code changes
+- **Diagram Creation**: Create a Mermaid architecture diagram from codebase or a file
 - **Text Summarization**: Generate concise summaries from text, clipboard content, or web pages
 - **Debugging Assistant**: Analyze command output and provide debugging insights
 - **Chat with docs and codebase**: 
-  - Document ingestion and querying with Retrieval Augmented Generation
+  - Document ingestion and querying with Retrieval Augmented Generation (RAG)
   - Interactive chat interface with context-aware responses
   - Automatic document processing (PDF, text, markdown and codebase)
+  - Hybrid search with semantic + keyword matching
 
 ### Supported LLM Providers
-- Ollama (default)
-- OpenAI
-- Deepseek
+- Ollama (default - llama3.2:3b)
+- OpenAI 
+- Deepseek 
 - OpenRouter 
-- AWS Bedrock
-
+- AWS Bedrock 
 ## Installation
 
 1. Install [uv](https://github.com/astral-sh/uv):
@@ -68,18 +71,42 @@ workllm code-review --pr owner/repo#number
 
 ### Code Style Checker
 
-```
+```bash
 # Code linting and formatting checker with `ruff`
 workllm code-check path/to/file.py
 
-# Code linting and formatting checker, and then use LLM to suggest fixes for any remaining issues
+# Code linting and formatting checker, and then use LLM to suggest fixes
 workllm code-check --llm-fix path/to/file.py
+```
+
+### PR Description Generation
+
+```bash 
+# Generate PR description from changes against target branch
+workllm pr-description --target-branch main
+
+# Save PR description to a file
+workllm pr-description --target-branch main --output pr.md
+```
+
+### Architecture Diagram
+
+```bash
+# Generate Mermaid diagram for a codebase
+workllm generate-diagram --source src/
+
+# Include README context and use LLM for enhanced analysis
+workllm generate-diagram --source src/ --readme README.md --use-llm
 ```
 
 ### Test Generation
 
 ```bash
-workllm addtests --file path/to/file.py [--unit/--no-unit] [--integration/--no-integration]
+# Generate both unit and integration tests
+workllm addtests --file src/module.py
+
+# Generate only unit tests with auto-fix
+workllm addtests --file src/module.py --no-integration --auto-fix
 ```
 
 ### Text Summarization
@@ -98,35 +125,25 @@ workllm summarize --text https://example.com
 workllm debug --shell-command "command to analyze"
 ```
 
-### RAG Commands
+### RAG Document Management & Chat
 
 ```bash
-# Ingest documents
+# Ingest documents (PDF, text, markdown)
 workllm rag ingest path/to/docs --collection_name documents_collection
 
-# List collections
+# List all available collections
 workllm rag list-collections
 
-# Question Answering from documents
+# Question answering with hybrid search (semantic + keyword)
 workllm rag query "your question" --collection_name documents_collection
 
-# Interactive chat
-workllm rag chat
+# Interactive chat with document context
+workllm rag chat --collection documents_collection
 
-# Delete collection
+# Delete a collection
 workllm rag delete-collection collection_name
 ```
 
-
-### Generate Tests
-
-```bash
-# Generate both unit and integration tests
-workllm addtests --file src/module.py
-
-# Generate only unit tests with auto-fix
-workllm addtests --file src/module.py --no-integration --auto-fix
-```
 
 
 ## Contributing
