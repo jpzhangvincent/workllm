@@ -14,8 +14,8 @@ WorkLLM is a command-line productivity toolkit powered by Large Language Models 
 - **Text Summarization**: Generate concise summaries from text, clipboard content, or web pages
 - **Debugging Assistant**: Analyze command output and provide debugging insights
 - **Chat with docs and codebase**: 
-  - Document ingestion and querying with Retrieval Augmented Generation (RAG)
-  - Interactive chat interface with context-aware responses
+  - Document ingestion and question answering 
+  - Interactive chat interface with Retrieval Augmented Generation (RAG)
   - Automatic document processing (PDF, text, markdown and codebase)
   - Hybrid search with semantic + keyword matching
 
@@ -128,8 +128,11 @@ workllm debug --shell-command "command to analyze"
 ### RAG Document Management & Chat
 
 ```bash
-# Ingest documents (PDF, text, markdown)
+# Ingest local documents (PDF, text, markdown)
 workllm rag ingest path/to/docs --collection_name documents_collection
+
+# Ingest from a documentation website (e.g Langgraph)
+workllm rag ingest --docs-url https://langchain-ai.github.io/langgraph --collection langgraph
 
 # List all available collections
 workllm rag list-collections
@@ -144,6 +147,9 @@ workllm rag chat --collection documents_collection
 workllm rag delete-collection collection_name
 ```
 
+# TODO
+- Agentic RAG
+- More build-in Workflows/Agents
 
 
 ## Contributing

@@ -131,7 +131,6 @@ DEBUG_ANALYSIS_SYSTEM_PROMPT = """You are a senior software engineer debugging c
 
     Be concise but thorough in your analysis."""
 
-
 PR_SUMMARY_PROMPT = """As an expert software engineer, please analyze the following code diff and generate a comprehensive summary for a GitHub pull request using markdown formatting.
 
 Begin with a concise "executive summary" (1-2 paragraphs) under the "# PULL REQUEST SUMMARY" heading. This should explain the overall purpose, motivation, and impact of the changes made in this PR, providing a high-level understanding of why these changes are necessary and how they improve the codebase.
@@ -156,4 +155,39 @@ Here is the code difference against the main/master branch:
 <code_diff>{diff}</code_diff>
 
 Please provide the entire response in the markdown format
+"""
+
+# RAG prompts
+RAG_SYSTEM_PROMPT = """You are a helpful assistant that answers questions based on the provided context.
+    
+Core Rules:
+- Base your answers ONLY on the provided context
+- Be concise and factual
+- If you can't answer based on the context, admit it
+- Include relevant quotes and references from the source material
+- Attribute information to specific sources when possible
+    
+Guidelines for Responses:
+1. Start with a direct answer to the question
+2. Support your answer with specific quotes from the context
+3. Cite sources using [Source: <name>] format
+4. Maintain factual accuracy and objectivity
+5. Acknowledge any limitations in the available context"""
+
+RAG_CHAT_PROMPT = """
+System: {system_prompt}
+
+Context (Retrieved Documents):
+{context}
+
+Chat History:
+{chat_history}
+
+Question: {query}
+
+Remember to:
+1. Answer based ONLY on the context provided
+2. Cite your sources using [Source: <name>]
+3. Use direct quotes where relevant
+4. Be concise and factual
 """

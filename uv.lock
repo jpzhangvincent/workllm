@@ -3338,7 +3338,7 @@ wheels = [
 
 [[package]]
 name = "workllm"
-version = "0.3"
+version = "0.5"
 source = { editable = "." }
 dependencies = [
     { name = "chromadb" },
