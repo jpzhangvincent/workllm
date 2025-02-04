@@ -112,11 +112,17 @@ workllm addtests --file src/module.py --no-integration --auto-fix
 ### Text Summarization
 
 ```bash
-workllm summarize --text "text to summarize"
-# or from clipboard
-workllm summarize --text paste
-# or from URL
-workllm summarize --text https://example.com
+# arXiv papers: 
+workllm summarize --url https://arxiv.org/pdf/2501.17811v1
+
+# local PDF file: 
+workllm summarize --file path/to/document.pdf
+
+# direct text 
+workllm summarize --text "Your text here"
+
+#clipboard content: 
+workllm summarize --paste
 ```
 
 ### Debug Analysis

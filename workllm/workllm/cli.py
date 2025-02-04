@@ -71,27 +71,30 @@ def code_review(file, pr, model, stream):
     click.echo(result)
 
 @cli.command()
-@click.option("--text", help="Text to summarize, 'paste' for clipboard, or URL starting with http(s)://")
+@click.option("--text", help="Text to summarize directly")
+@click.option("--file", type=click.Path(exists=True), help="Local PDF file to summarize")
+@click.option("--url", help="URL to document (supports arXiv PDFs)")
+@click.option("--paste", is_flag=True, help="Use clipboard content")
 @click.option("--model", default="ollama:llama3.2:3b", help="LLM model to use")
-def summarize(text, model):
-    """Generate summary of text content from direct input, clipboard, or URL"""
+@click.option("--stream/--no-stream", default=True, help="Enable/disable streaming output")
+def summarize(text, file, url, paste, model, stream):
+    """Generate summary from text, PDF file, URL (including arXiv), or clipboard"""
     client = _get_client(model)
-    if text == "paste":
-        text = _get_clipboard_content()
-    elif text and text.startswith(('http://', 'https://')):
-        import requests
-        from unstructured.partition.html import partition_html
-        try:
-            response = requests.get(text)
-            response.raise_for_status()
-            elements = partition_html(text=response.text)
-            text = "\n".join([str(el) for el in elements])
-        except requests.RequestException as e:
-            raise click.ClickException(f"Failed to fetch URL content: {str(e)}") from e
-        except ImportError:
-            raise click.ClickException("unstructured library required for URL processing") from None
-    result = summarize_text(client, text)
-    click.echo(result)
+
+    try:
+        if paste:
+            text = _get_clipboard_content()
+        if file or url:
+            source = file if file else url
+            result = summarize_text(client, source=source, stream=stream)
+        elif text:
+            result = summarize_text(client, text=text, stream=stream)
+        else:
+            raise click.ClickException("One of --text, --file, --url, or --paste must be specified")
+
+        click.echo(result)
+    except ValueError as e:
+        raise click.ClickException(str(e))
 
 @cli.command()
 @click.option("--shell-command", required=True, help="Command to debug")

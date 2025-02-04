@@ -238,17 +238,37 @@ def review_code(client: LLMClient, code: str, stream: bool = True) -> str:
         stream=stream
     )
 
-def summarize_text(client: LLMClient, text: str, stream: bool = True) -> str:
-    """Generate a summary of the provided text using an LLM client.
+def summarize_text(client: LLMClient, source: str | None = None, text: str | None = None, stream: bool = True) -> str:
+    """Generate a summary of the provided text or document using an LLM client.
 
     Args:
         client: The LLM client to use for summarization
-        text: The text to be summarized
+        source: Optional source path or URL to a document (supports PDF files and arXiv URLs)
+        text: Optional raw text to be summarized directly
         stream: Whether to stream the response or return it all at once
 
     Returns:
         The generated summary of the text
+
+    Raises:
+        ValueError: If neither source nor text is provided, or if docling conversion fails
     """
+    if not source and not text:
+        raise ValueError("Either source or text must be provided")
+
+    if source:
+        try:
+            from docling.document_converter import DocumentConverter
+            converter = DocumentConverter()
+            result = converter.convert(source)
+            text = result.document.export_to_markdown()
+            print(text)
+        except Exception as e:
+            raise ValueError(f"Failed to convert document: {str(e)}")
+
+    if not text:
+        raise ValueError("Failed to extract text from source")
+
     return client.generate(
         prompt=f"Provide a comprehensive summary of this text:\n{text}",
         system=TEXT_SUMMARIZATION_SYSTEM_PROMPT,

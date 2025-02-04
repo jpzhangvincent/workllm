@@ -32,6 +32,7 @@ dependencies = [
     "langchain-chroma>=0.2.0",
     "rank-bm25>=0.2.2",
     "ruff>=0.9.3",
+    "docling>=2.18.0",
 ]
 
 [project.scripts]
