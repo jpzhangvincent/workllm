@@ -131,6 +131,12 @@ workllm summarize --paste
 workllm debug --shell-command "command to analyze"
 ```
 
+### Extract, parse and save Documentation
+
+```bash
+workllm save-parsed-content --target https://ds4sd.github.io/docling/ --save_path "./docs/test.md"
+```
+
 ### RAG Document Management & Chat
 
 ```bash

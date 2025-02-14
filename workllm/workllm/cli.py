@@ -4,12 +4,12 @@ import subprocess
 import click
 from dotenv import load_dotenv
 from github import Github
+from pathlib import Path
 
 from .llm_clients import BedrockClient, DeepSeekClient, OllamaClient, OpenAIClient, OpenRouterClient
 from .productivity import add_tests, analyze_debug_output, generate_code_docs, review_code, summarize_text, generate_pr_description, generate_mermaid_diagram
 from .rag import rag_group
-from .utils import get_clipboard_content as _get_clipboard_content
-from .utils import safe_subprocess_run
+from .utils import get_clipboard_content, safe_subprocess_run, get_sitemap_urls, get_docling_content
 
 load_dotenv()
 if os.getenv("LLM_CLIENT") and os.getenv("LLM_CLIENT_MODEL"):
@@ -71,6 +71,39 @@ def code_review(file, pr, model, stream):
     click.echo(result)
 
 @cli.command()
+@click.option("--target", help="a local path or website url to parse the content")
+@click.option("--is_doc_url", is_flag=False, help="Whether to crawl all the documentation urls on the target")
+@click.option("--save_path", default="", help="Save parsed content to a directory")
+@click.option("--save_format", default="markdown", type=click.Choice(["markdown", "html", "json"], case_sensitive=False), help="Format to save the parsed content (markdown or html)")
+def save_parsed_content(target, is_doc_url, save_path, save_format):
+    """Parse a file or website and save the content"""
+    from docling.document_converter import DocumentConverter
+    converter = DocumentConverter()
+    if is_doc_url:
+        sitemap_urls = get_sitemap_urls(target)
+        conv_results_iter = converter.convert_all(sitemap_urls)
+        docs = []
+        for result in conv_results_iter:
+            if result.document:
+                document = get_docling_content(result.document, save_format)
+                docs.append(document)
+        output = "\n".join(docs)       
+    else:
+        result = converter.convert(target)
+        output = get_docling_content(result.document, save_format)
+    
+    if output and save_path:
+        # Ensure the parent directory exists
+        Path(save_path).parent.mkdir(parents=True, exist_ok=True)
+        with open(save_path, 'w') as f:
+            f.write(output)
+    elif output:
+        click.echo(output)
+    else:
+        click.echo("No parsed content to save!")
+    
+
+@cli.command()
 @click.option("--text", help="Text to summarize directly")
 @click.option("--file", type=click.Path(exists=True), help="Local PDF file to summarize")
 @click.option("--url", help="URL to document (supports arXiv PDFs)")
@@ -83,7 +116,7 @@ def summarize(text, file, url, paste, model, stream):
 
     try:
         if paste:
-            text = _get_clipboard_content()
+            text = get_clipboard_content()
         if file or url:
             source = file if file else url
             result = summarize_text(client, source=source, stream=stream)

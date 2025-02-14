@@ -1,7 +1,9 @@
 import datetime
 import os
 import subprocess
-from typing import Any
+from typing import Any, Literal, List
+import xml.etree.ElementTree as ET
+from urllib.parse import urljoin
 
 from chromadb import PersistentClient
 from langchain.retrievers import EnsembleRetriever
@@ -10,7 +12,9 @@ from langchain_chroma import Chroma
 from langchain_community.retrievers import BM25Retriever
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_text_splitters import PythonCodeTextSplitter, RecursiveCharacterTextSplitter
+import requests
 from tqdm import tqdm
+from transformers import PreTrainedTokenizerBase
 
 # Cache for vectorstores and retrievers
 _vectorstore_cache = {}
@@ -46,19 +50,80 @@ def fix_code(client: Any, lint_output: str) -> str:
     """
     prompt = f"""You are a code quality expert. Below is the output from a linting tool:
 
-{lint_output}
+    {lint_output}
 
-Please provide specific fixes for these issues. Format your response as:
-1. For each issue, explain the problem and how to fix it
-2. Provide the complete fixed code at the end
+    Please provide specific fixes for these issues. Format your response as:
+    1. For each issue, explain the problem and how to fix it
+    2. Provide the complete fixed code at the end
 
-Return only the fixes, no additional commentary."""
+    Return only the fixes, no additional commentary."""
 
     try:
         return client.generate(prompt)
     except Exception as e:
         raise RuntimeError(f"Failed to generate fixes: {str(e)}") from e
 
+
+def get_sitemap_urls(base_url: str, sitemap_filename: str = "sitemap.xml") -> List[str]:
+    """Fetches and parses a sitemap XML file to extract URLs.
+
+    Args:
+        base_url: The base URL of the website
+        sitemap_filename: The filename of the sitemap (default: sitemap.xml)
+
+    Returns:
+        List of URLs found in the sitemap. If sitemap is not found, returns a list
+        containing only the base URL.
+
+    Raises:
+        ValueError: If there's an error fetching (except 404) or parsing the sitemap
+    """
+    try:
+        sitemap_url = urljoin(base_url, sitemap_filename)
+
+        # Fetch sitemap URL
+        response = requests.get(sitemap_url, timeout=10)
+
+        # # Return just the base URL if sitemap not found
+        if response.status_code == 404:
+            return [base_url.rstrip("/")]
+
+        response.raise_for_status()
+
+        # Parse XML content
+        root = ET.fromstring(response.content)
+
+        # Handle different XML namespaces that sitemaps might use
+        namespaces = (
+            {"ns": root.tag.split("}")[0].strip("{")} if "}" in root.tag else ""
+        )
+
+        # Extract URLs using namespace if present
+        if namespaces:
+            urls = [elem.text for elem in root.findall(".//ns:loc", namespaces)]
+        else:
+            urls = [elem.text for elem in root.findall(".//loc")]
+
+        return urls
+
+    except requests.RequestException as e:
+        raise ValueError(f"Failed to fetch sitemap: {str(e)}")
+    except ET.ParseError as e:
+        raise ValueError(f"Failed to parse sitemap XML: {str(e)}")
+    except Exception as e:
+        raise ValueError(f"Unexpected error processing sitemap: {str(e)}")
+    
+
+def get_docling_content(doc, save_format: str):
+        if save_format == 'markdown':
+            output = doc.export_to_markdown()
+        elif save_format == 'html':
+            output = doc.export_to_html()
+        elif save_format == 'json':
+            output = doc.export_to_json()
+        else:
+            print("Unsupported format. Please choose markdown, html or json.")
+        return output
 
 class ChunkingConfig:
     """Configuration for text chunking strategies"""
@@ -68,12 +133,17 @@ class ChunkingConfig:
         chunk_size: int = 1000,
         chunk_overlap: int = 200,
         separators: list[str] | None = None,
-        code_splitter: bool = False
+        code_splitter: bool = False,
+        chunking_strategy: Literal["recursive", "hybrid"] = "recursive",
+        tokenizer: PreTrainedTokenizerBase | str = "sentence-transformers/all-MiniLM-L6-v2",
+        max_tokens: int = None
     ):
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.separators = separators or ["\n\n", "\n", " ", ""]
         self.code_splitter = code_splitter
+        self.tokenizer = tokenizer
+        self.max_tokens = max_tokens
 
 
 class EmbeddingConfig:
@@ -113,20 +183,30 @@ def ingest_doc(
     embedding_config = embedding_config or EmbeddingConfig()
 
     # Create text splitter based on configuration
-    if chunking_config.code_splitter:
-        splitter = PythonCodeTextSplitter(
-            chunk_size=chunking_config.chunk_size,
-            chunk_overlap=chunking_config.chunk_overlap
-        )
+    if chunking_config.chunking_strategy == "recursive":
+        if chunking_config.code_splitter:
+            splitter = PythonCodeTextSplitter(
+                chunk_size=chunking_config.chunk_size,
+                chunk_overlap=chunking_config.chunk_overlap
+            )
+        else:
+            splitter = RecursiveCharacterTextSplitter(
+                chunk_size=chunking_config.chunk_size,
+                chunk_overlap=chunking_config.chunk_overlap,
+                separators=chunking_config.separators
+            )
+        # Split text into chunks and convert to Documents
+        chunks = splitter.split_text(text)
     else:
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=chunking_config.chunk_size,
-            chunk_overlap=chunking_config.chunk_overlap,
-            separators=chunking_config.separators
+        from docling_core.transforms.chunker.hybrid_chunker import HybridChunker
+        chunker = HybridChunker(
+            tokenizer=chunking_config.tokenizer,
+            max_tokens=chunking_config.MAX_TOKENS,
+            merge_peers=True,
         )
+        chunk_iter = chunker.chunk(dl_doc=text)
+        chunks = list(chunk_iter)
 
-    # Split text into chunks and convert to Documents
-    chunks = splitter.split_text(text)
     documents = [
         Document(
             page_content=chunk,

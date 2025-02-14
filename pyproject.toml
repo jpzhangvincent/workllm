@@ -1,6 +1,6 @@
 [project]
 name = "workllm"
-version = "0.5"
+version = "0.6"
 description = "LLM-powered productivity toolkit for engineers"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -33,6 +33,7 @@ dependencies = [
     "rank-bm25>=0.2.2",
     "ruff>=0.9.3",
     "docling>=2.18.0",
+    "docling-core[chunking]>=2.17.1",
 ]
 
 [project.scripts]
