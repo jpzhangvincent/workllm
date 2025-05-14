@@ -32,9 +32,11 @@ WorkLLM is a command-line productivity toolkit powered by Large Language Models 
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-2. Install WorkLLM:
+2. Install locally for dev:
 ```bash
-uv pip install workllm
+uv venv
+source .venv/bin/activate
+uv sync
 ```
 
 ## Configuration

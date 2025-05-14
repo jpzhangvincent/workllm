@@ -262,6 +262,7 @@ def summarize_text(client: LLMClient, source: str | None = None, text: str | Non
             converter = DocumentConverter()
             result = converter.convert(source)
             text = result.document.export_to_markdown()
+            #print(f"Parsed text: {text}")
         except Exception as e:
             raise ValueError(f"Failed to convert document: {str(e)}")
 

@@ -12,6 +12,7 @@ from .rag import rag_group
 from .utils import get_clipboard_content, safe_subprocess_run, get_sitemap_urls, get_docling_content
 
 load_dotenv()
+
 if os.getenv("LLM_CLIENT") and os.getenv("LLM_CLIENT_MODEL"):
     DEFAULT_MODEL = f"{os.getenv('LLM_CLIENT')}:{os.getenv('LLM_CLIENT_MODEL')}"
 else:
@@ -49,7 +50,7 @@ def cli():
 @cli.command()
 @click.option("--file", type=click.Path(exists=True), help="File to review")
 @click.option("--pr", help="GitHub PR in format owner/repo#number")
-@click.option("--model", default="ollama:llama3.2:3b", help="LLM model to use")
+@click.option("--model", default=DEFAULT_MODEL, help="LLM model to use")
 @click.option("--stream/--no-stream", default=True, help="Enable streaming output")
 def code_review(file, pr, model, stream):
     """Perform code review on a file or GitHub PR"""
@@ -108,7 +109,7 @@ def save_parsed_content(target, is_doc_url, save_path, save_format):
 @click.option("--file", type=click.Path(exists=True), help="Local PDF file to summarize")
 @click.option("--url", help="URL to document (supports arXiv PDFs)")
 @click.option("--paste", is_flag=True, help="Use clipboard content")
-@click.option("--model", default="ollama:llama3.2:3b", help="LLM model to use")
+@click.option("--model", default=DEFAULT_MODEL, help="LLM model to use")
 @click.option("--stream/--no-stream", default=True, help="Enable/disable streaming output")
 def summarize(text, file, url, paste, model, stream):
     """Generate summary from text, PDF file, URL (including arXiv), or clipboard"""
@@ -131,7 +132,7 @@ def summarize(text, file, url, paste, model, stream):
 
 @cli.command()
 @click.option("--shell-command", required=True, help="Command to debug")
-@click.option("--model", default="ollama:llama3.2:3b", help="LLM model to use")
+@click.option("--model", default=DEFAULT_MODEL, help="LLM model to use")
 @click.option("--execute/--no-execute", default=True, help="Execute the command or use as-is")
 def debug(shell_command, model, execute):
     """Analyze command output for debugging"""
@@ -161,7 +162,7 @@ def _get_client(model_str: str):
 @click.option("--file", type=click.Path(exists=True), help="File to document")
 @click.option("--style", type=click.Choice(['google', 'sphinx']), default='google', help="Documentation style")
 @click.option("--focus", type=click.Choice(['class', 'function', None]), default=None, help="Focus on specific code elements")
-@click.option("--model", default="ollama:llama3.2:3b", help="LLM model to use")
+@click.option("--model", default=DEFAULT_MODEL, help="LLM model to use")
 @click.option("--stream/--no-stream", default=True, help="Enable streaming output")
 @click.option("--overwrite/--no-overwrite", default=True, help="Overwrite the input file with documented code")
 def codedoc(file, style, focus, model, stream, overwrite):
@@ -191,7 +192,7 @@ def codedoc(file, style, focus, model, stream, overwrite):
 @click.option("--integration/--no-integration", default=True, help="Generate integration tests")
 @click.option("--auto-fix/--no-auto-fix", default=False, help="Automatically fix failing tests using LLM")
 @click.option("--max-iterations", default=3, type=int, help="Maximum auto-fix iterations")
-@click.option("--model", default="ollama:llama3.2:3b", help="LLM model to use")
+@click.option("--model", default=DEFAULT_MODEL, help="LLM model to use")
 @click.option("--stream/--no-stream", default=True, help="Enable streaming output")
 def addtests(file, unit, integration, auto_fix, max_iterations, model, stream):
     """Generate unit and integration tests for Python code"""
@@ -217,7 +218,7 @@ def addtests(file, unit, integration, auto_fix, max_iterations, model, stream):
 @cli.command()
 @click.argument("path", type=click.Path(exists=True))
 @click.option("--llm-fix", is_flag=True, help="Use LLM to fix remaining linting errors")
-@click.option("--model", default="ollama:llama3.2:3b", help="LLM model to use")
+@click.option("--model", default=DEFAULT_MODEL, help="LLM model to use")
 def code_check(path, llm_fix, model):
     """Run ruff linting and optionally fix remaining errors with LLM"""
     client = _get_client(model)
@@ -248,7 +249,7 @@ def code_check(path, llm_fix, model):
 @cli.command()
 @click.option("--target-branch", default="master", help="Target branch to compare against")
 @click.option("--output", type=click.Path(), help="Output markdown file path")
-@click.option("--model", default="ollama:llama3.2:3b", help="LLM model to use")
+@click.option("--model", default=DEFAULT_MODEL, help="LLM model to use")
 def pr_description(target_branch, output, model):
     """Generate concise PR description based on changes against target branch"""
     from pathlib import Path
@@ -281,7 +282,7 @@ def pr_description(target_branch, output, model):
 @click.option("--source", type=click.Path(exists=True, file_okay=False), required=True, help="Directory to generate Mermaid diagram for")
 @click.option("--readme", type=click.Path(exists=True, dir_okay=False), help="Path to README.md for additional context")
 @click.option("--use-llm", is_flag=True, help="Use LLM reasoning to extract key functions")
-@click.option("--model", default="ollama:llama3.2:3b", help="LLM model to use")
+@click.option("--model", default=DEFAULT_MODEL, help="LLM model to use")
 def generate_diagram(source, readme, use_llm, model):
     """Generate a Mermaid diagram based on the dependencies in a codebase
     
